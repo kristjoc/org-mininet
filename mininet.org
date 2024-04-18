@@ -1,0 +1,1026 @@
+#+title:  Mininet Workshop
+#+author: [[mailto:kristjoc@ifi.uio.no][Kristjon Ciko]]
+#+date:   2024-04-30
+#+options: h:1 toc:nil
+
+* Part 1: Introduction to Mininet
+
+** What is Mininet?
+
+Mininet is a /network emulator/, or perhaps more precisely a /network
+emulation orchestration system/. It runs a collection of end-hosts,
+switches, routers, and links on a single Linux kernel.
+
+"Mininet creates a *realistic virtual network*, running *real kernel,
+switch and application code*, on a single machine (VM, cloud or
+native), in seconds, with a single command."
+
+#+caption: Emulated Network in Mininet vs. Hardware Network
+#+attr_org: :width 600px
+#+attr_latex: scale=0.25
+#+label: fig:label
+                       [[./mininet-what-is-mininet.png]]
+
+*** A Mininet network consists of:
+
+- ISOLATED HOSTS
+A group of user-level processes moved into a network namespace that
+provide exclusive ownership of interfaces, ports and routing tables.
+
+- EMULATED LINKS
+Linux Traffic Control (=tc=) enforces the data rate of each link to
+shape traffic to a configured rate. Each emulated host has its own
+virtual Ethernet interface(s).
+
+-EMULATED SWITCHES
+The default Linux Bridge or the Open vSwitch running in kernel mode is
+used to switch packets across interfaces. Switches and routers can run
+in the kernel or in the user space.
+
+Mininet networks run real code including standard Unix/Linux network
+applications as well as the real Linux kernel and network stack.
+Mininet provides an extensible Python API for network creation and
+experimentations.
+
+** Why use Mininet?
+
+1. It's fast - starting up a simple network takes just a few seconds. This means
+   that your run-edit-debug loop can be very quick.
+
+2. You can create custom topologies: a single switch, larger Internet-like
+   topologies, the Stanford backbone, a data center, or anything else.
+
+3. You can run real programs: anything that runs on Linux is available for you
+   to run, from web servers to TCP window monitoring tools to Wireshark.
+
+4. You can customize packet forwarding: Mininet's switches are programmable
+   using the OpenFlow protocol. Custom Software-Defined Network designs that run
+   in Mininet can easily be transferred to hardware OpenFlow switches for
+   line-rate packet forwarding.
+
+5. You can run Mininet on your laptop, on a server, in a VM, on a native Linux
+   box (Mininet is included with Ubuntu 12.10+!), or in the cloud (e.g. Amazon
+   EC2.)
+
+6. You can share and replicate results: anyone with a computer can run your code
+   once you've packaged it up.
+
+7. You can use it easily: you can create and run Mininet experiments by writing
+   simple (or complex if necessary) Python scripts.
+
+8. Mininet is an open source project, so you are encouraged to examine its
+   source code on https://github.com/mininet, modify it, fix bugs, file
+   issues/feature requests, and submit patches/pull requests. You may also edit
+   this documentation to fix any errors or add clarifications or additional
+   information.
+
+9. Mininet is under active development. So, if it sucks, doesn't make sense, or
+   doesn't work for some reason, please let us know on mininet-discuss and the
+   Mininet user and developer community can try to explain it, fix it, or help
+   you fix it. :-) If you find bugs, you are encouraged to submit patches to fix
+   them, or at least to submit an issue on github including a reproducible test
+   case.
+
+** What are Mininet's limitations?
+
+1. Running on a single system is convenient, but it imposes resource
+   limits: if your server has 3 GHz of CPU and can switch about 10
+   Gbps of simulated traffic, those resources will need to be balanced
+   and shared among your virtual hosts and switches.
+
+2. Mininet uses a single Linux kernel for all virtual hosts; this
+   means that you can't run software that depends on BSD, Windows, or
+   other operating system kernels. (Although you can attach VMs to
+   Mininet.)
+
+3. Mininet won't write your OpenFlow controller for you; if you need
+   custom routing or switching behavior, you will need to find or
+   develop a controller with the features you require.
+
+4. By default your Mininet network is isolated from your LAN and from
+   the internet - this is usually a good thing! However, you may use
+   the NAT object and/or the --nat option to connect your Mininet
+   network to your LAN via Network Address Translation. You can also
+   attach a real (or virtual) hardware interface to your Mininet
+   network (see examples/hwintf.py for details.)
+
+5. By default all Mininet hosts share the host file system and PID
+   space; this means that you may have to be careful if you are
+   running daemons that require configuration in /etc, and you need to
+   be careful that you don't kill the wrong processes by mistake.
+   (Note the bind.py example demonstrates how to have per-host private
+   directories.)
+
+6. Unlike a simulator, Mininet doesn't have a strong notion of virtual
+   time; this means that timing measurements will be based on real
+   time, and that faster-than-real-time results (e.g. 100 Gbps
+   networks) cannot easily be emulated.
+
+** Installation and Setup
+
+The easiest way to get started is to download a pre-packaged
+Mininet/Ubuntu VM. This VM includes Mininet itself, all OpenFlow
+binaries and tools pre-installed, and tweaks to the kernel
+configuration to support larger Mininet networks.
+
+- Option 1: Mininet VM Installation (easy, recommended)
+- Option 2: Native Installation from Source
+- Option 3: Installation from Packages
+- Option 4. Upgrading an existing Mininet Installation
+Important Note: Python 2 and Python 3 Mininet
+
+*** Option 1: Mininet VM Installation (easy, recommended)
+
+VM installation is the easiest and most foolproof way of installing
+Mininet, so it’s what we recommend to start with.
+
+Follow these steps for a VM install:
+
+1. Download a Mininet VM Image from [[https://github.com/mininet/mininet/releases/][Mininet Releases]].
+
+2. Download and install a virtualization system. Mininet recommend one
+   of the following free options:
+
+   - VirtualBox (GPL, macOS/Windows/Linux)
+   - VMware Fusion (macOS)
+   - VMware Workstation Player (Windows/Linux)
+
+   You can also use any of:
+
+   - Qemu (free, GPL) for any platform
+   - Microsoft Hyper-V (Windows)
+   - KVM (free, GPL, Linux)
+
+*** Option 2: Native Installation from Source
+
+This option works well for local VM, remote EC2, and native
+installation. It assumes the starting point of a fresh Ubuntu, Debian,
+or (experimentally) Fedora installation.
+
+We strongly recommend more recent Ubuntu or Debian releases, because
+they include newer versions of Open vSwitch. (Fedora also includes
+recent OvS releases.)
+
+To install natively from source, first you need to get the source code:
+
+#+begin_src sh
+  git clone https://github.com/mininet/mininet
+#+end_src
+
+Note that the above git command will check out the latest and greatest
+Mininet (which we recommend!) If you want to run the last
+tagged/released version of Mininet - or any other version - you may
+check that version out explicitly:
+
+#+begin_src sh
+  cd mininet
+  git tag  # list available versions
+  git checkout -b mininet-2.3.0 2.3.0  # or whatever version you wish to install
+  cd ..
+#+end_src
+
+Once you have the source tree, the command to install Mininet is:
+
+#+begin_src sh
+  mininet/util/install.sh [options]
+#+end_src
+
+Typical =install.sh= options include:
+
+=-a=: install everything that is included in the Mininet VM, including
+dependencies like Open vSwitch as well the additions like the OpenFlow
+wireshark dissector and POX. By default these tools will be built in
+directories created in your home directory.
+
+=-nfv=: install Mininet, the OpenFlow reference switch, and Open
+vSwitch
+
+=-s mydir=: use this option before other options to place source/build
+trees in a specified directory rather than in your home directory.
+
+So, you will probably wish to use one (and only one) of the following
+commands:
+
+#+begin_src sh
+  To install everything (using your home directory): install.sh -a
+  To install everything (using another directory for build): install.sh -s mydir -a
+  To install Mininet + user switch + OvS (using your home dir): install.sh -nfv
+  To install Mininet + user switch + OvS (using another dir:) install.sh -s mydir -nfv
+#+end_src
+
+You can find out about other useful options (e.g. installing the
+OpenFlow wireshark dissector, if it’s not already included in your
+version of wireshark) using
+
+#+begin_src sh
+  install.sh -h
+#+end_src
+
+After the installation has completed, test the basic Mininet
+functionality:
+
+#+begin_src sh
+  sudo mn --switch ovsbr --test pingall
+#+end_src
+
+*** Option 3: Installation from Packages
+
+If you’re running a recent Ubuntu release, or Debian 11+, you can
+install the Mininet packages. Note that this may give you an older
+version of Mininet, but it can be a very convenient way to get
+started.
+
+To confirm which OS version you are running, run the command
+
+#+begin_src sh
+  lsb_release -a
+#+end_src
+
+Next, install the base Mininet package by entering only one of the
+following commands, corresponding to the distribution you are running:
+
+#+begin_src sh
+  Mininet 2.3.0 on Debian 11: sudo apt-get install mininet
+  Mininet 2.2.2 on Ubuntu 20.04 LTS: sudo apt-get install Mininet/Ubuntu
+  Mininet 2.2.2 on Ubuntu 18.04 LTS: sudo apt-get install mininet
+#+end_src
+
+
+If it’s not obvious which Mininet version you have, you can try:
+
+#+begin_src sh
+  mn --version
+#+end_src
+
+Mininet supports multiple switches and OpenFlow controllers. For this
+test, we will use Open vSwitch in bridge/standalone mode.
+
+To test this, try:
+
+#+begin_src sh
+  sudo mn --switch ovsbr --test pingall
+#+end_src
+
+If Mininet complains that Open vSwitch isn’t working, make sure it is
+installed and running:
+
+#+begin_src sh
+  sudo apt-get install openvswitch-switch
+  sudo service openvswitch-switch start
+#+end_src
+
+If you wish to go through the Mininet walkthrough, you will want to
+install additional software. The following commands
+
+#+begin_src sh
+  git clone https://github.com/mininet/mininet
+  mininet/util/install.sh -fw
+#+end_src
+
+will install the OpenFlow reference switch, reference controller and
+Wireshark dissector.
+
+*** Option 4. Upgrading an existing Mininet Installation
+
+There are many ways to do this. If you haven’t made any changes to
+Mininet, you can usually:
+
+1. Check out the Mininet code, if you don’t have it already:
+
+#+begin_src sh
+  git clone https://github.com/mininet/mininet
+#+end_src
+
+2. Remove old Mininet packages, if any:
+
+#+begin_src sh
+sudo apt-get uninstall mininet       # if you have installed a Mininet apt package
+
+sudo pip uninstall mininet           # if you are upgrading an older Mininet VM
+                                     # where Mininet was installed with setuptools
+#+end_src
+
+3. Install the new Mininet version:
+
+#+begin_src sh
+  cd mininet
+  git fetch  # to fetch the latest and greatest branches and tags
+  git tag    # to see what versions are available
+
+  git checkout -b mininet-2.3.0 2.3.0  # or whatever version/branch you want, or
+                                       # master if you want the latest
+
+  sudo make install   # only install new mnexec and mininet packages
+#+end_src
+
+Note that sudo make install only installs mnexec and the Mininet
+packages. If you wish to install Mininet and its dependencies, do
+this:
+
+#+begin_src sh
+  sudo apt-get update   # make sure apt works
+  util/install.sh -n    # install mininet and dependencies
+#+end_src
+
+If you wish to specify a specific Python version, you can do so:
+
+#+begin_src sh
+  sudo PYTHON=python3 make install
+#+end_src
+
+or
+
+#+begin_src sh
+  PYTHON=python3 util/install.sh -a
+#+end_src
+
+As an alternative to =sudo make install= you can also do =sudo make
+develop=, which will create symbolic links from =/usr/lib/python...=
+to your source tree.
+
+Note that this will only upgrade Mininet itself - any other components
+such as Open vSwitch, etc. can be upgraded separately as desired.
+
+** Mininet Walkthrough
+
+*** Part 1: Everyday Mininet Usage
+
+**** Interact with Hosts and Switches
+
+Start a minimal topology and enter the CLI:
+
+#+begin_src sh
+  $ sudo mn
+#+end_src
+
+The default topology is the minimal topology, which includes one
+OpenFlow kernel switch connected to two hosts, plus the OpenFlow
+reference controller. This topology could also be specified on the
+command line with =--topo=minimal=. Other topologies are also
+available out of the box; see the =--topo= section in the output of
+=mn -h=.
+
+All four entities (2 host processes, 1 switch process, 1 basic
+controller) are now running in the VM. The controller can be outside
+the VM, and instructions for that are at the bottom.
+
+If no specific test is passed as a parameter, the Mininet CLI comes
+up.
+
+In the Wireshark window, you should see the kernel switch connect to
+the reference controller.
+
+Display Mininet CLI commands:
+
+#+begin_src sh
+  mininet> help
+#+end_src
+
+Display nodes:
+
+#+begin_src sh
+  mininet> nodes
+#+end_src
+
+Display links:
+
+#+begin_src sh
+  mininet> net
+#+end_src
+
+Dump information about all nodes:
+
+#+begin_src sh
+  mininet> dump
+#+end_src
+
+You should see the switch and two hosts listed.
+
+If the first string typed into the Mininet CLI is a host, switch or
+controller name, the command is executed on that node. Run a command
+on a host process:
+
+#+begin_src sh
+  mininet> h1 ifconfig -a
+#+end_src
+
+
+You should see the host’s =h1-eth0= and loopback (=lo=) interfaces. Note
+that this interface (=h1-eth0=) is not seen by the primary Linux system
+when ifconfig is run, because it is specific to the network namespace
+of the host process.
+
+In contrast, the switch by default runs in the root network namespace,
+so running a command on the “switch” is the same as running it from a
+regular terminal:
+
+#+begin_src sh
+  mininet> s1 ifconfig -a
+#+end_src
+
+This will show the switch interfaces, plus the VM’s connection out
+(=eth0=).
+
+For other examples highlighting that the hosts have isolated network
+state, run arp and route on both =s1= and =h1=.
+
+It would be possible to place every host, switch and controller in its
+own isolated network namespace, but there’s no real advantage to doing
+so, unless you want to replicate a complex multiple-controller
+network. Mininet does support this; see the =--innamespace= option.
+
+Note that only the network is virtualized; each host process sees the
+same set of processes and directories. For example, print the process
+list from a host process:
+
+#+begin_src sh
+  mininet> h1 ps -a
+#+end_src
+
+This should be the exact same as that seen by the root network namespace:
+
+#+begin_src sh
+  mininet> s1 ps -a
+#+end_src
+
+It would be possible to use separate process spaces with Linux
+containers, but currently Mininet doesn’t do that. Having everything
+run in the “root” process namespace is convenient for debugging,
+because it allows you to see all of the processes from the console
+using =ps=, =kill=, etc.
+
+**** Test connectivity between hosts
+
+Now, verify that you can ping from host 0 to host 1:
+
+#+begin_src sh
+  mininet> h1 ping -c 1 h2
+#+end_src
+
+
+If a string appears later in the command with a node name, that node
+name is replaced by its IP address; this happened for =h2=.
+
+You should see OpenFlow control traffic. The first host ARPs for the
+MAC address of the second, which causes a packet_in message to go to
+the controller. The controller then sends a packet_out message to
+flood the broadcast packet to other ports on the switch (in this
+example, the only other data port). The second host sees the ARP
+request and sends a reply. This reply goes to the controller, which
+sends it to the first host and pushes down a flow entry.
+
+Now the first host knows the MAC address of the second, and can send
+its ping via an ICMP Echo Request. This request, along with its
+corresponding reply from the second host, both go the controller and
+result in a flow entry pushed down (along with the actual packets
+getting sent out).
+
+Repeat the last ping:
+
+#+begin_src sh
+  mininet> h1 ping -c 1 h2
+#+end_src
+
+
+You should see a much lower ping time for the second try (< 100us). A
+flow entry covering ICMP ping traffic was previously installed in the
+switch, so no control traffic was generated, and the packets
+immediately pass through the switch.
+
+An easier way to run this test is to use the Mininet CLI built-in
+pingall command, which does an all-pairs ping:
+
+#+begin_src sh
+  mininet> pingall
+#+end_src
+
+**** Run a simple web server and client
+
+Remember that =ping= isn’t the only command you can run on a host!
+Mininet hosts can run any command or application that is available to
+the underlying Linux system (or VM) and its file system. You can also
+enter any bash command, including job control (&, jobs, kill, etc..)
+
+Next, try starting a simple HTTP server on =h1=, making a request from
+=h2=, then shutting down the web server:
+
+#+begin_src sh
+  mininet> h1 python -m http.server 80 &
+  mininet> h2 wget -O - h1
+  ...
+  mininet> h1 kill %python
+#+end_src
+
+
+NOTE: For Python 3, the HTTP server is called =http.server=; for
+Python 2, it is called =SimpleHTTPServer=. Make sure you are using the
+right one for the version of Mininet you are running. To find out
+which Python version Mininet is using, you can type
+
+#+begin_src sh
+  mininet> py sys.version
+  3.8.5 (default, Jan 27 2021, 15:41:15)
+#+end_src
+
+Exit the CLI:
+
+#+begin_src sh
+  mininet> exit
+#+end_src
+
+**** Cleanup
+
+If Mininet crashes for some reason, clean it up:
+
+#+begin_src sh
+  $ sudo mn -c
+#+end_src
+
+
+*** Part 2: Advanced Startup Options
+
+**** Run a Regression Test
+
+You don’t need to drop into the CLI; Mininet can also be used to run
+self-contained regression tests.
+
+Run a regression test:
+
+#+begin_src sh
+  $ sudo mn --test pingpair
+#+end_src
+
+
+This command created a minimal topology, started up the OpenFlow
+reference controller, ran an all-pairs-ping test, and tore down both
+the topology and the controller.
+
+Another useful test is =iperf= (give it about 10 seconds to complete):
+
+#+begin_src sh
+  $ sudo mn --test iperf
+#+end_src
+
+
+This command created the same Mininet, ran an iperf server on one
+host, ran an iperf client on the second host, and parsed the bandwidth
+achieved.
+
+**** Changing Topology Size and Type
+
+The default topology is a single switch connected to two hosts. You
+could change this to a different topo with =--topo=, and pass parameters
+for that topology’s creation. For example, to verify all-pairs ping
+connectivity with one switch and three hosts:
+
+Run a regression test:
+
+#+begin_src sh
+  $ sudo mn --test pingall --topo single,3
+#+end_src
+
+Another example, with a linear topology (where each switch has one
+host, and all switches connect in a line):
+
+#+begin_src sh
+  $ sudo mn --test pingall --topo linear,4
+#+end_src
+
+Parametrized topologies are one of Mininet’s most useful and powerful
+features.
+
+**** Link variations
+
+Mininet 2.0 allows you to set link parameters, and these can even be
+set automatially from the command line:
+
+#+begin_src sh
+  $ sudo mn --link tc,bw=10,delay=10ms
+  mininet> iperf
+  ...
+  mininet> h1 ping -c10 h2
+#+end_src
+
+
+If the delay for each link is 10 ms, the round trip time (RTT) should
+be about 40 ms, since the ICMP request traverses two links (one to the
+switch, one to the destination) and the ICMP reply traverses two links
+coming back.
+
+You can customize each link using Mininet’s Python API, but for now
+you will probably want to continue with the walkthrough.
+
+**** Adjustable Verbosity
+
+The default verbosity level is =info=, which prints what Mininet is
+doing during startup and teardown. Compare this with the full =debug=
+output with the =-v= param:
+
+#+begin_src sh
+  $ sudo mn -v debug
+  ...
+  mininet> exit
+#+end_src
+
+Lots of extra detail will print out. Now try =output=, a setting that
+prints CLI output and little else:
+
+#+begin_src sh
+  $ sudo mn -v output
+  mininet> exit
+#+end_src
+
+Outside the CLI, other verbosity levels can be used, such as
+=warning=, which is used with the regression tests to hide unneeded
+function output.
+
+**** Custom Topologies
+
+  Custom topologies can be easily defined as well, using a simple
+  Python API, and an example is provided in
+  =custom/topo-2sw-2host.py=. This example connects two switches
+  directly, with a single host off each switch:
+
+  #+begin_src python
+    """Custom topology example
+    Two directly connected switches plus a host for each switch:
+
+      host --- switch --- switch --- host
+
+    Adding the 'topos' dict with a key/value pair to generate our newly
+    defined opology enables one to pass in '--topo=mytopo' from the
+    command line.
+
+    To start up a mininet with the provided custom topology, do:
+    sudo mn --custom custom_example.py --topo mytopo
+    """
+
+    from mininet.topo import Topo
+
+    class MyTopo( Topo ):
+        "Simple topology example."
+
+        def build( self ):
+            "Create custom topo."
+
+            # Add hosts and switches
+            leftHost = self.addHost( 'h1' )
+            rightHost = self.addHost( 'h2' )
+            leftSwitch = self.addSwitch( 's3' )
+            rightSwitch = self.addSwitch( 's4' )
+
+            # Add links
+            self.addLink( leftHost, leftSwitch )
+            self.addLink( leftSwitch, rightSwitch )
+            self.addLink( rightSwitch, rightHost )
+
+
+    topos = { 'mytopo': ( lambda: MyTopo() ) }
+#+end_src
+
+When a custom mininet file is provided, it can add new topologies,
+switch types, and tests to the command-line. For example:
+
+#+begin_src sh
+$ sudo mn --custom ~/mininet/custom/topo-2sw-2host.py --topo mytopo --test pingall
+#+end_src
+
+
+ID = MAC
+
+By default, hosts start with randomly assigned MAC addresses. This can
+make debugging tough, because every time the Mininet is created, the
+MACs change, so correlating control traffic with specific hosts is
+tough.
+
+The =--mac= option is super-useful, and sets the host MAC and IP addrs
+to small, unique, easy-to-read IDs.
+
+Before:
+
+#+begin_src sh
+  $ sudo mn
+  ...
+  mininet> h1 ifconfig
+  h1-eth0  Link encap:Ethernet  HWaddr f6:9d:5a:7f:41:42
+            inet addr:10.0.0.1  Bcast:10.255.255.255  Mask:255.0.0.0
+            UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+            RX packets:6 errors:0 dropped:0 overruns:0 frame:0
+            TX packets:6 errors:0 dropped:0 overruns:0 carrier:0
+            collisions:0 txqueuelen:1000
+            RX bytes:392 (392.0 B)  TX bytes:392 (392.0 B)
+  mininet> exit
+#+end_src
+
+After:
+
+#+begin_src sh
+  $ sudo mn --mac
+  ...
+  mininet> h1 ifconfig
+  h1-eth0  Link encap:Ethernet  HWaddr 00:00:00:00:00:01
+            inet addr:10.0.0.1  Bcast:10.255.255.255  Mask:255.0.0.0
+            UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+            RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+            TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+            collisions:0 txqueuelen:1000
+            RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+  mininet> exit
+#+end_src
+
+In contrast, the MACs for switch data ports reported by Linux will
+remain random. This is because you can ‘assign’ a MAC to a data port
+using OpenFlow, as noted in the FAQ. This is a somewhat subtle point
+which you can probably ignore for now.
+
+**** XTerm Display
+
+For more complex debugging, you can start Mininet so that it spawns
+one or more xterms.
+
+To start an xterm for every host and switch, pass the =-x= option:
+
+#+begin_src sh
+  $ sudo mn -x
+#+end_src
+
+After a second, the xterms will pop up, with automatically set window
+names.
+
+Alternately, you can bring up additional xterms for h1 and h2 as show
+below:
+
+#+begin_src sh
+  mininet> xterm h1 h2
+#+end_src
+
+By default, only the hosts are put in a separate namespace; the window
+for each switch is unnecessary (that is, equivalent to a regular
+terminal), but can be a convenient place to run and leave up switch
+debug commands, such as flow counter dumps.
+
+Xterms are also useful for running interactive commands that you may
+need to cancel, for which you’d like to see the output.
+
+For example:
+
+In the xterm labeled “switch: s1 (root)”, run:
+
+# ovs-ofctl dump-flows tcp:127.0.0.1:6654
+
+Nothing will print out; the switch has no flows added. To use
+=ovs-ofctl= with other switches, start up mininet in =verbose= mode
+and look at the passive listening ports for the switches when they’re
+created.
+
+Now, in the xterm labeled “host: h1”, run:
+
+# ping 10.0.0.2
+
+Go back to s1 and dump the flows: =# ovs-ofctl dump-flows tcp:127.0.0.1:6654=
+
+You should see multiple flow entries now. Alternately (and generally
+more convenient), you could use the =dpctl= command built into the
+Mininet CLI without needing any xterms or manually specifying the IP
+and port of the switch.
+
+You can tell whether an xterm is in the root namespace by checking
+=ifconfig=; if all interfaces are shown (including eth0), it’s in the
+root namespace. Additionally, its title should contain “(root)”.
+
+Close the setup, from the Mininet CLI:
+
+#+begin_src sh
+  mininet> exit
+#+end_src
+
+The xterms should automatically close.
+
+**** Link Up/Down
+
+For fault tolerance testing, it can be helpful to bring links up and down.
+
+To disable both halves of a virtual ethernet pair:
+
+#+begin_src sh
+  mininet> link s1 h1 down
+#+end_src
+
+You should see an OpenFlow Port Status Change notification get
+generated. To bring the link back up:
+
+#+begin_src sh
+  mininet> link s1 h1 up
+#+end_src
+
+
+* Part 2: Mininet Python API
+
+** Understanding the [[https://mininet.org/api/annotated.html][Mininet API]]
+
+Over the course of this introduction, you have been exposed to a
+number of Python classes which comprise Mininet's API, including
+classes such as =Topo=, =Mininet=, =Host=, =Switch=, =Link= and their
+subclasses. It is convenient to divide these classes into levels (or
+layers), since in general the high-level APIs are built using the
+lower-level APIs.
+
+Mininet's API is built at three primary levels:
+
+ 1. Low-level API: The low-level API consists of the base node and
+    link classes (such as =Host=, =Switch=, and =Link= and their
+    subclasses) which can actually be instantiated individually and
+    used to create a network, but it is a bit unwieldy.
+
+ 2. Mid-level API: The mid-level API adds the =Mininet= object which
+    serves as a container for nodes and links. It provides a number of
+    methods (such as =addHost()=, =addSwitch()=, and =addLink()=) for
+    adding nodes and links to a network, as well as network
+    configuration, startup and shutdown (notably =start()= and
+    =stop()=.)
+
+ 3. High-level API: The high-level API adds a topology template
+    abstraction, the =Topo= class, which provides the ability to
+    create reusable, parametrized topology templates. These templates
+    can be passed to the =mn= command (via the =--custom= option) and
+    used from the command line.
+
+It is valuable to understand each of the API levels. In general when
+you want to control nodes and switches directly, you use the low-level
+API. When you want to start or stop a network, you usually use the
+mid-level API (notably the =Mininet= class.)
+
+Things become interesting when you start thinking about creating full
+networks. Full networks can be created using any of the API levels (as
+seen in the examples), but usually you will want to pick either the
+mid-level API (e.g. =Mininet.add*()=) or the high-level API
+(=Topo.add*()=) to create your networks.
+
+Here are examples of creating networks using each API level:
+
+#### Low-level API: nodes and links
+
+#+begin_src python
+  h1 = Host( 'h1' )
+  h2 = Host( 'h2' )
+  s1 = OVSSwitch( 's1', inNamespace=False )
+  c0 = Controller( 'c0', inNamespace=False )
+  Link( h1, s1 )
+  Link( h2, s1 )
+  h1.setIP( '10.1/8' )
+  h2.setIP( '10.2/8' )
+  c0.start()
+  s1.start( [ c0 ] )
+  print( h1.cmd( 'ping -c1', h2.IP() ) )
+  s1.stop()
+  c0.stop()
+#+end_src
+
+#### Mid-level API: Network object
+
+#+begin_src python
+  net = Mininet()
+  h1 = net.addHost( 'h1' )
+  h2 = net.addHost( 'h2' )
+  s1 = net.addSwitch( 's1' )
+  c0 = net.addController( 'c0' )
+  net.addLink( h1, s1 )
+  net.addLink( h2, s1 )
+  net.start()
+  print( h1.cmd( 'ping -c1', h2.IP() ) )
+  CLI( net )
+  net.stop()
+#+end_src
+
+#### High-level API: Topology templates
+
+#+begin_src python
+  class SingleSwitchTopo( Topo ):
+      "Single Switch Topology"
+      def build( self, count=1 ):
+          hosts = [ self.addHost( 'h%d' % i )
+                    for i in range( 1, count + 1 ) ]
+          s1 = self.addSwitch( 's1' )
+          for h in hosts:
+              self.addLink( h, s1 )
+
+  net = Mininet( topo=SingleSwitchTopo( 3 ) )
+  net.start()
+  CLI( net )
+  net.stop()
+#+end_src
+
+As you can see, the mid-level API is actually the simplest and most
+concise for this example, because it doesn't require creation of a
+topology class. The low-level and mid-level APIs are flexible and
+powerful, but may be less convenient to reuse compared to the
+high-level `Topo` API and its topology templates.
+
+Note also that in Mininet versions before 2.2.0 the high-level =Topo=
+doesn't support multiple links between nodes, but the lower level APIs
+do. Currently =Topo= also doesn't concern itself with which switches
+are controlled by which controllers (you can use a custom =Switch=
+subclass to do this, as described above.) With the mid-level and
+low-level APIs, you can manually start the switches if desired,
+passing the appropriate list of controllers to each switch.
+
+### Mininet API Documentation
+
+Mininet includes Python documentation strings for each module and API
+call. These may be accessed from Python's regular `help()` mechanism. For
+example,
+
+#+begin_src python
+  python
+  >>> from mininet.node import Host
+  >>> help(Host.IP)
+  Help on method IP in module mininet.node:
+
+  IP(self, intf=None) unbound mininet.node.Host method
+          Return IP address of a node or specific interface.
+#+end_src
+
+This same documentation is also available on the Mininet web site at
+<http://api.mininet.org>.
+
+** Creating Custom Topologies with Python scripts
+
+Demo 1: iperf (snd - rtr - rcv) Measure ping and tput
+Demo 2: 
+
+Example:
+[[https://github.com/kr1stj0n/mn-tcp-validation/blob/main/mininet-basic-tcp.org][TCP validation in Mininet]]
+
+*** Nodes and Links instances
+
+*** Network parameters (bandwidth, delay, loss, queue size, etc.)
+
+
+Part 4: Python API Examples
+
+The examples directory in the Mininet source tree includes examples of how to use Mininet’s Python API, as well as potentially
+useful code that has not been integrated into the main code base.
+
+Note: As noted at the beginning, this Walkthrough assumes that you are either using a Mininet VM, which includes everything you need, or a
+native installation with all of the associated tools, including the reference controller controller, which is part of the OpenFlow reference
+implementation and may be installed using install.sh -f if it has not been installed.
+
+SSH daemon per host
+
+One example that may be particularly useful runs an SSH daemon on every host:
+
+$ sudo ~/mininet/examples/sshd.py
+
+From another terminal, you can ssh into any host and run interactive commands:
+
+$ ssh 10.0.0.1
+$ ping 10.0.0.2
+...
+$ exit
+
+Exit SSH example mininet:
+
+$ exit
+
+You will wish to revisit the examples after you’ve read the Introduction to Mininet, which introduces the Python API.
+
+** Experiment Automation using Python
+
+Example:
+[[https://gist.github.com/kr1stj0n/e297480106938de77f44ce58a0c7d46e][Testing a Routing Protocol in Mininet]]
+
+*** Preparing the topology
+
+*** Running network experiments
+
+*** Collecting and analyzing results
+
+*** Plotting the data
+
+
+* Part 3: Advanced Topics
+
+** SDN with Mininet
+
+*** SDN Controllers
+
+*** Open vSwitches
+
+*** OpenFlow Protocol
+
+*** P4 programming language
+
+*** Demo: [[https://opennetworking.org/onos/][ONOS SDN Controller in Mininet]]
+
+** Mininet Extensions
+
+Connect Mininet with Docker containers and the real world
+
+*** [[https://containernet.github.io/][ContainerNet]]
+
+*** [[https://distrinet-emu.github.io/][DistriNet]]
+
+*** [[https://maxinet.github.io/][MaxiNet]]
+
+
+* Part 4: Wrap-up + Q&A
