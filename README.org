@@ -959,32 +959,193 @@ The Python scripts for the hands-on demo session can be found at the
 following links:
 
 https://github.com/kristjoc/org-mininet/tree/main/demo-api
+
+
 https://github.com/kristjoc/org-mininet/tree/main/bird
 
 
 * Part 3: Advanced Topics
 
-** SDN with Mininet
+** Mininet and Software-Defined Networking
 
-*** SDN Controllers
+One of Mininet's most powerful and useful features is that it uses
+*Software Defined Networking*. Using the [[https://opennetworking.org/sdn-resources/customer-case-studies/openflow/][OpenFlow]] protocol and related
+tools, you can program switches to do almost anything you want with
+the packets that enter them. OpenFlow makes emulators like Mininet
+much more useful, since network system designs, including custom
+packet forwarding with OpenFlow, can easily be transferred to hardware
+OpenFlow switches for line-rate operation. A tutorial for creating a
+simple learning switch using Mininet and OpenFlow may be found at:
 
-*** Open vSwitches
+https://github.com/mininet/openflow-tutorial/wiki
 
-*** OpenFlow Protocol
+*** OpenFlow Controllers
 
-*** P4 programming language
+If you run the =mn= command without specifying a controller, it will
+pick a default controller such as Controller or OVSController,
+depending on what is available.
 
-*** Demo: [[https://opennetworking.org/onos/][ONOS SDN Controller in Mininet]]
+This is equivalent to:
+
+#+begin_src bash
+  $ sudo mn --controller default
+#+end_src
+
+This controller implements a simple Ethernet learning switch, and
+supports up to 16 individual switches.
+
+If you invoke the =Mininet()= constructor in your script without
+specifying a controller class, by default it will use the
+=Controller()= class to create an instance of the Stanford/OpenFlow
+reference controller, =controller=. Like =ovs-controller=, it turns
+your switches into simple learning switches, but if you have installed
+controller using Mininet's =install.sh -f= script, the patched version
+of controller should support a large number of switches (up to 4096 in
+theory, but you'll probably max out your computing resources much
+earlier.) You can also select the reference controller for =mn= by
+specifying =--controller= ref.
+
+If you want to use your own controller, you can easily create a custom
+subclass of =Controller()= and pass it into Mininet. An example can be
+seen in =mininet.controller.NOX()=, which invokes NOX classic with a set
+of modules passed in as options.
+
+Here's a simple example of creating and using a custom POX Controller subclass:
+
+#+begin_src python
+  #!/usr/bin/python
+
+  from mininet.net import Mininet
+  from mininet.node import Controller
+  from mininet.topo import SingleSwitchTopo
+  from mininet.log import setLogLevel
+
+  import os
+
+  class POXBridge( Controller ):
+      "Custom Controller class to invoke POX forwarding.l2_learning"
+      def start( self ):
+          "Start POX learning switch"
+          self.pox = '%s/pox/pox.py' % os.environ[ 'HOME' ]
+          self.cmd( self.pox, 'forwarding.l2_learning &' )
+      def stop( self ):
+          "Stop POX"
+          self.cmd( 'kill %' + self.pox )
+
+  controllers = { 'poxbridge': POXBridge }
+
+  if __name__ == '__main__':
+      setLogLevel( 'info' )
+      net = Mininet( topo=SingleSwitchTopo( 2 ), controller=POXBridge )
+      net.start()
+      net.pingAll()
+      net.stop()
+#+end_src
+
+Note that the above script is written so that it also can be used as a
+custom argument to mn for use with different topologies and tests as
+well as the Mininet CLI:
+
+#+begin_src bash
+
+$ sudo mn --custom poxbridge.py --controller poxbridge --topo tree,2,2 --test pingall -v output
+# Ping: testing ping reachability
+h1 -> h2 h3 h4
+h2 -> h1 h3 h4
+h3 -> h1 h2 h4
+h4 -> h1 h2 h3
+# Results: 0% dropped (0/12 lost)
+#+end_src
+
+If you look at the implementation of the NOX class in
+=mininet/node.py=, you will notice that it can actually accept options
+to allow different modules to be started depending on what arguments
+are passed into it, from the constructor or the mn command line.
+
+External OpenFlow Controllers
+
+Custom =Controller()= subclasses are the most convenient method for
+automatically starting and shutting down your controller. It's easy to
+create =start()= and =stop()= methods so that Mininet will automatically
+start and stop your controller as needed.
+
+However, you may find it useful to connect Mininet to an existing
+controller that is already running somewhere else, for example
+somewhere on your LAN, in another VM, or on your laptop.
+
+The =RemoteController= class acts as a proxy for a controller which may
+be running anywhere on the control network, but which must be started
+up and shut down manually or by some other mechanism outside of
+Mininet's direct control.
+
+You can use RemoteController from Mininet:
+
+#+begin_src python
+  from functools import partial
+
+  net = Mininet( topo=topo, controller=partial( RemoteController, ip='127.0.0.1', port=6633 ) )
+#+end_src
+
+or if you prefer:
+
+#+begin_src python
+  net = Mininet( topo=topo, controller=lambda name: RemoteController( name, ip='127.0.0.1' ) )
+#+end_src
+
+or even
+
+#+begin_src python
+  net = Mininet( topo=topo, controller=None)
+  net.addController( 'c0', controller=RemoteController, ip='127.0.0.1', port=6633 )
+#+end_src
+
+
+Note that controller (like host and switch) in this case is a
+constructor, not an object (but see below for additional info!) You
+can create a custom constructor in-line using partial or lambda, or
+you can pass in your own function (which must take the name parameter
+and return a controller object) or class (e.g. a subclass of
+=RemoteController=.)
+
+You can also create multiple controllers and create a custom =Switch()=
+subclass which connects to different controllers as desired:
+
+#+begin_src python
+
+  c0 = Controller( 'c0' )  # local controller
+  c1 = RemoteController( 'c1', ip='127.0.0.2' )  # external controller
+  cmap = { 's1': c0, 's2': c1, 's3': c1 }
+
+  class MultiSwitch( OVSSwitch ):
+      "Custom Switch() subclass that connects to different controllers"
+      def start( self, controllers ):
+          return OVSSwitch.start( self, [ cmap[ self.name ] ] )
+
+#+end_src
+
+You can also specify an external controller from the =mn= command line:
+
+#+begin_src bash
+  $ sudo mn --controller remote,ip=192.168.51.101
+#+end_src
+
+
+*** Hands-on Demo session: [[https://github.com/noxrepo/pox][POX Controller]]
+
+In this session, we will experiment with POX SDN Controller which
+interacts with Open vSwitches through the OpenFlow protocol.
+
+The POX components that we will test can be found at the
+following link:
+
+https://github.com/kristjoc/org-mininet/tree/main/pox/pox/mn
+
 
 ** Mininet Extensions
 
-Connect Mininet with Docker containers and the real world
 
 *** [[https://containernet.github.io/][ContainerNet]]
 
 *** [[https://distrinet-emu.github.io/][DistriNet]]
 
 *** [[https://maxinet.github.io/][MaxiNet]]
-
-
-* Part 4: Wrap-up + Q&A
