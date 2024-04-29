@@ -955,49 +955,11 @@ This same documentation is also available on the Mininet web site at
 
 ** Hands-on Demo session - Mininet Python API
 
-Demo 1: iperf (snd - rtr - rcv) Measure ping and tput
-Demo 2: 
+The Python scripts for the hands-on demo session can be found at the
+following links:
 
-Part 4: Python API Examples
-
-The examples directory in the Mininet source tree includes examples of how to use Mininet’s Python API, as well as potentially
-useful code that has not been integrated into the main code base.
-
-Note: As noted at the beginning, this Walkthrough assumes that you are either using a Mininet VM, which includes everything you need, or a
-native installation with all of the associated tools, including the reference controller controller, which is part of the OpenFlow reference
-implementation and may be installed using install.sh -f if it has not been installed.
-
-SSH daemon per host
-
-One example that may be particularly useful runs an SSH daemon on every host:
-
-$ sudo ~/mininet/examples/sshd.py
-
-From another terminal, you can ssh into any host and run interactive commands:
-
-$ ssh 10.0.0.1
-$ ping 10.0.0.2
-...
-$ exit
-
-Exit SSH example mininet:
-
-$ exit
-
-You will wish to revisit the examples after you’ve read the Introduction to Mininet, which introduces the Python API.
-
-** Experiment Automation using Python
-
-The BIRD Case
-[[https://gist.github.com/kr1stj0n/e297480106938de77f44ce58a0c7d46e][Testing a Routing Protocol in Mininet]]
-
-*** Preparing the topology
-
-*** Running network experiments
-
-*** Collecting and analyzing results
-
-*** Plotting the data
+https://github.com/kristjoc/org-mininet/tree/main/demo-api
+https://github.com/kristjoc/org-mininet/tree/main/bird
 
 
 * Part 3: Advanced Topics
