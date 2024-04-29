@@ -3,6 +3,17 @@
 #+date:   2024-04-30
 #+options: h:1 toc:nil
 
+* Disclaimer
+The following document is a collection of tutorials mostly from the
+Mininet main web page (http://mininet.org/) and its Github Wiki
+(https://github.com/mininet/mininet/wiki). This content has been
+summarized and reorganized, but is not original work. All tutorials,
+code examples, instructions and other copyrighted materials contained
+in the Mininet documentation remain the property of their original
+authors and contributors.
+
+Check the [[./LICENSEs/][LICENSEs]] directory for a copy of applicable licenses.
+
 * Part 1: Introduction to Mininet
 
 ** What is Mininet?
@@ -16,7 +27,7 @@ switch and application code*, on a single machine (VM, cloud or
 native), in seconds, with a single command."
 
 #+caption: Emulated Network in Mininet vs. Hardware Network
-#+attr_org: :width 600px
+#+attr_org: :width 300px
 #+attr_latex: scale=0.25
 #+label: fig:label
                        [[./mininet-what-is-mininet.png]]
@@ -32,7 +43,7 @@ Linux Traffic Control (=tc=) enforces the data rate of each link to
 shape traffic to a configured rate. Each emulated host has its own
 virtual Ethernet interface(s).
 
--EMULATED SWITCHES
+- EMULATED SWITCHES
 The default Linux Bridge or the Open vSwitch running in kernel mode is
 used to switch packets across interfaces. Switches and routers can run
 in the kernel or in the user space.
@@ -127,7 +138,6 @@ configuration to support larger Mininet networks.
 - Option 2: Native Installation from Source
 - Option 3: Installation from Packages
 - Option 4. Upgrading an existing Mininet Installation
-Important Note: Python 2 and Python 3 Mininet
 
 *** Option 1: Mininet VM Installation (easy, recommended)
 
@@ -943,18 +953,10 @@ example,
 This same documentation is also available on the Mininet web site at
 <http://api.mininet.org>.
 
-** Creating Custom Topologies with Python scripts
+** Hands-on Demo session - Mininet Python API
 
 Demo 1: iperf (snd - rtr - rcv) Measure ping and tput
 Demo 2: 
-
-Example:
-[[https://github.com/kr1stj0n/mn-tcp-validation/blob/main/mininet-basic-tcp.org][TCP validation in Mininet]]
-
-*** Nodes and Links instances
-
-*** Network parameters (bandwidth, delay, loss, queue size, etc.)
-
 
 Part 4: Python API Examples
 
@@ -986,7 +988,7 @@ You will wish to revisit the examples after you’ve read the Introduction to Mi
 
 ** Experiment Automation using Python
 
-Example:
+The BIRD Case
 [[https://gist.github.com/kr1stj0n/e297480106938de77f44ce58a0c7d46e][Testing a Routing Protocol in Mininet]]
 
 *** Preparing the topology
