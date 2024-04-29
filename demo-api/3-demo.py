@@ -1,4 +1,7 @@
-"""Custom topology example
+#!/usr/bin/env python
+
+"""
+Custom topology example
 
 Two directly connected switches plus a host for each switch:
 
@@ -16,7 +19,6 @@ from mininet.log import setLogLevel, info
 from time import sleep
 import os
 import signal
-# from mininet.util import pmonitor
 
 
 class MyTopo(Topo):
@@ -37,7 +39,7 @@ class MyTopo(Topo):
         self.addLink(rightSwitch, rightHost)
 
 
-topos = { 'mytopo': ( lambda: MyTopo() ) }
+topos = {'mytopo': (lambda: MyTopo())}
 
 
 def openTerm(node, title, geometry, cmd="bash"):
@@ -54,35 +56,32 @@ def monitorHosts():
     "Create a Linear topology of k switches, with n hosts per switch."
     net = Mininet(topo=MyTopo(), waitConnected=True, link=TCLink)
 
-    h2 = net.get('h2')
+    # Get host objects
     h1 = net.get('h1')
+    h2 = net.get('h2')
 
+    # Start network
     net.start()
 
+    # Start iperf server at host2
     h2.cmd('iperf -s &')
 
-    # Launch xterm in host h1
+    # Launch xterm in host h1 and start iperf client immediately
     cmd = "iperf -c %s -t 10; bash" % h2.IP()
 
     h1.cmd('xterm -e "%s" &' % cmd)
-    # Start iperf clients
-    # terms = []
-    # terms.append(openTerm(node=h1,
-    #                       title="h1",
-    #                       geometry="80x14+555+0",
-    #                       cmd="iperf -c %s -t 10" % h2.IP()))
 
-    # Stop any iperf instances running on the hosts
-
+    # Start Mininet CLI (just a hack so that h1 xterm does not
+    # disappear after iperf terminates)
     CLI(net)
 
-    # for t in terms:
-    #     os.kill(t.pid, signal.SIGKILL)
+    # Kill existing iperfs
     for host in net.hosts:
         host.cmd('killall iperf')
 
     # Done
     net.stop()
+
 
 if __name__ == '__main__':
     setLogLevel('info')

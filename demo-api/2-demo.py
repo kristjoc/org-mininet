@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
 """
-This example monitors a number of hosts using host.popen() and
-pmonitor()
+This example monitors a number of hosts using host.popen() and pmonitor().
 
 Topology:
-          h1s1           h1s2
-              \         /
-               s1 --- s2
-              /         \
-          h2s1           h2s2
+          h1s1 -- s1 --- s2 -- h2s1
+                  |      |
+                h2s1    h2s2
+
 """
 
 from mininet.net import Mininet
@@ -21,7 +19,10 @@ from mininet.util import pmonitor
 
 def monitorHosts(k=2, n=2):
     "Create a Linear topology of k switches, with n hosts per switch."
+
     mytopo = LinearTopo(k, n)
+
+    # Create Mininet object with LinearTopo and TCLink classes
     net = Mininet(topo=mytopo, waitConnected=True, link=TCLink)
 
     # Get switch objects
@@ -31,16 +32,17 @@ def monitorHosts(k=2, n=2):
     net.delLinkBetween(s1, s2)
     net.addLink(s1, s2, cls=TCLink, bw=10, delay='10ms')
 
+    # Start the network
     net.start()
 
     servers = []
     for host in net.hosts:
         if 's2' in host.name:
             servers.append(host)
-            # Start iperf server at h1s2 h2s2
+            # Start iperf servers at h1s2 h2s2
             host.cmd('iperf -s &')
 
-    # Start iperf clients
+    # Start iperf clients at h1s1 h2s1
     popens = {}
     for host in net.hosts:
         if 'h1s1' in host.name:
