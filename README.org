@@ -161,6 +161,9 @@ Follow these steps for a VM install:
    - Microsoft Hyper-V (Windows)
    - KVM (free, GPL, Linux)
 
+Follow [[https://blog.matrixpost.net/enable-x11-forwarding-with-putty-and-the-xming-x-server-for-windows/][this]] guide to set up an SSH tunnel with X11 Forwarding from
+your Windows machine to the Mininet VM. 
+
 *** Option 2: Native Installation from Source
 
 This option works well for local VM, remote EC2, and native
@@ -1142,7 +1145,6 @@ https://github.com/kristjoc/org-mininet/tree/main/pox/pox/mn
 
 
 ** Mininet Extensions
-
 
 *** [[https://containernet.github.io/][ContainerNet]]
 
